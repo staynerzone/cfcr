@@ -1,0 +1,5 @@
+#!/bin/bash
+bosh deploy -d cfcr manifests/cfcr.yml \
+  -o manifests/ops-files/misc/single-master.yml \
+  -o manifests/ops-files/add-hostname-to-master-certificate.yml \
+  -v api-hostname=cfcr-master.bootstrap.cloud.with.hate.pewpew.io
