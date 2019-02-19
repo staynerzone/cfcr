@@ -1,0 +1,40 @@
+resources:
+- name: cfcr-git
+  type: git
+  source:
+    branch: master
+    uri: git@github.com:staynerzone/kubo-deployment.git
+    private_key: ((git.private_key))
+
+- name: cfcr-poc
+  type: bosh-deployment
+  source:
+    deployment: cfcr-poc
+    target: https://((bosh_environment)):25555
+    client: ((bosh_client))
+    client_secret: ((bosh_client_secret))
+    ca_cert: ((bosh_ca_cert))
+
+resource_types:
+- name: bosh-deployment
+  type: docker-image
+  source:
+    repository: cloudfoundry/bosh-deployment-resource
+
+jobs:
+- name: deploy-cfcr
+  plan:
+  - get: cfcr-git
+    put: cfcr-poc
+    params:
+      manifest: cfcr-git/manifests/cfcr.yml
+      #stemcells:
+      #- path to
+      #releases:
+      #- path to rs*
+      ops_files:
+      - cfcr-git/manifests/ops-files/misc/single-master.yml
+      - cfcr-git/manifests/ops-files/add-hostname-to-master-certificate.yml
+      vars:
+        api-hostname: cfcr-master.bootstrap.cloud.with.hate.pewpew.io     
+     
