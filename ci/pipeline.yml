@@ -1,40 +1,108 @@
 resources:
+- name: bosh-dns
+  type: bosh-io-release
+  source:
+    repository: cloudfoundry/bosh-dns-release
+    regexp: 1.10.*
+
+- name: bosh-runtime-config
+  type: bosh-config
+  source: 
+    <<: &bucc
+      target: https://((bosh_environment)):25555
+      client: ((bosh_client))
+      client_secret: ((bosh_client_secret))
+      ca_cert: ((bosh_ca_cert))
+    config: runtime 
+
+- name: xenial-stemcell
+  type: bosh-io-stemcell
+  source:
+    name: bosh-openstack-kvm-ubuntu-xenial-go_agent
+
 - name: cfcr-git
   type: git
   source:
     branch: master
-    uri: git@github.com:staynerzone/kubo-deployment.git
+    uri: git@github.com:staynerzone/cfcr.git
     private_key: ((git.private_key))
 
 - name: cfcr-poc
   type: bosh-deployment
   source:
-    deployment: cfcr-poc
-    target: https://((bosh_environment)):25555
-    client: ((bosh_client))
-    client_secret: ((bosh_client_secret))
-    ca_cert: ((bosh_ca_cert))
+    deployment: cfcr
+    <<: *bucc
+
+- name: bosh-errand-cfcr
+  type: bosh-errand
+  source:
+    deployment: cfcr
+    <<: *bucc
 
 resource_types:
+- name: bosh-errand
+  type: docker-image
+  source:
+    repository: cfcommunity/bosh2-errand-resource
+
 - name: bosh-deployment
   type: docker-image
   source:
     repository: cloudfoundry/bosh-deployment-resource
 
+- name: bosh-config
+  type: docker-image
+  source:
+    repository: cfcommunity/bosh-config-resource
+
 jobs:
-- name: deploy-cfcr
+- name: teardown
   plan:
   - get: cfcr-git
-    put: cfcr-poc
+  - put: cfcr-poc
     params:
       manifest: cfcr-git/manifests/cfcr.yml
-      #stemcells:
-      #- path to
-      #releases:
-      #- path to rs*
+      delete:
+        enabled: true
+        force: true
+
+- name: deploy-cfcr
+  plan:
+  - aggregate:
+    - get: cfcr-git
+    - get: xenial-stemcell
+    - get: bosh-dns
+  - put: bosh-runtime-config
+    params:
+      manifest: cfcr-git/configs/runtime-config-dns.yml
+  - put: cfcr-poc
+    params:
+      manifest: cfcr-git/manifests/cfcr.yml
+      stemcells:
+      - xenial-stemcell/*.tgz
+      releases:
+      - bosh-dns/*.tgz
       ops_files:
       - cfcr-git/manifests/ops-files/misc/single-master.yml
       - cfcr-git/manifests/ops-files/add-hostname-to-master-certificate.yml
+      - cfcr-git/manifests/ops-files/add-bosh-dns.yml
       vars:
         api-hostname: cfcr-master.bootstrap.cloud.with.hate.pewpew.io     
-     
+      cleanup: true
+      recreate: false
+
+- name: apply-specs-errand
+  plan:
+  - get: cfcr-git
+    passed: [deploy-cfcr]
+  - put: bosh-errand-cfcr
+    params:
+      name: apply-specs
+
+- name: smoke-tests-errand
+  plan:
+  - get: cfcr-git
+    passed: [deploy-cfcr, apply-specs-errand]
+  - put: bosh-errand-cfcr
+    params:
+      name: smoke-tests
