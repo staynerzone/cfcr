@@ -1,0 +1,7 @@
+#!/bin/bash
+
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+sudo snap install kubectl --classic
+
+$DIR/bin/set_kubeconfig $(bosh env --json | jq '.Tables[].Rows[].name' -r)/cfcr https://$(bosh int <(bosh manifest -d cfcr) --path /variables/name=tls-kubernetes/options/alternative_names/-1):8443
