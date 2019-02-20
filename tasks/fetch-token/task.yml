@@ -10,9 +10,6 @@ image_resource:
 inputs:
 - name: cfcr-git
 
-outputs:
-- name: k8s-token
-
 params:
   DIRECTOR_NAME:
   CFCR_MASTER_DNS:
