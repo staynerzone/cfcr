@@ -1,3 +1,4 @@
+import.yml
 .DS_Store
 bin/go-outline
 bin/gopkgs
