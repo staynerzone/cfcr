@@ -14,6 +14,8 @@ inputs:
 params:
   DIRECTOR_NAME:
   CFCR_MASTER_DNS:
+  KUBO_CA:
+  KUBO_ADMIN_PASSWORD:
 
 run:
   path: cfcr-git/tasks/fetch-token/task.sh
