@@ -10,5 +10,9 @@ echo "EXPORTING TOKEN..."
 cat ~/.kube/config | grep token | awk '{print $2}' > k8s-token/token
 echo "...DONE"
 
-credhub api $CREDHUB_URL --skip-tls-validation
+{
+ IFS='' && echo $CREDHUB_CA_CERT | tee ca-cert
+} &> /dev/null
+
+credhub api $CREDHUB_URL --ca-cert ca-cert
 credhub login
