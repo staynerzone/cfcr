@@ -18,6 +18,10 @@ params:
   CFCR_MASTER_DNS:
   KUBO_CA:
   KUBO_ADMIN_PASSWORD:
+  CREDHUB_CA:
+  CREDHUB_CLIENT:
+  CREDHUB_SECRET:
+  CREDHUB_URL:
 
 run:
   path: cfcr-git/tasks/fetch-token/task.sh
