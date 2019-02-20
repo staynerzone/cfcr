@@ -11,7 +11,7 @@ cat ~/.kube/config | grep token | awk '{print $2}' > k8s-token/token
 echo "...DONE"
 
 {
- IFS='' && echo $CREDHUB_CA_CERT | tee ca-cert
+ IFS='' && echo $CREDHUB_CA | tee ca-cert
 } &> /dev/null
 
 credhub api $CREDHUB_URL --ca-cert ca-cert
