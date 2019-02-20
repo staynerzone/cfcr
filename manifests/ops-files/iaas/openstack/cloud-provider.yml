@@ -9,11 +9,14 @@
       cloud-config:
         Global:
           auth-url: ((auth_url))
+          tenant-name: ((openstack_projectname))
           domain-name: ((openstack_domain))
           password: ((openstack_password))
           region: ((region))
           tenant-id: ((openstack_project_id))
           username: ((openstack_username))
+        BlockStorage:
+          ignore-volume-az: true
     provides:
       cloud-provider: {as: master-cloud-provider}
 
@@ -43,11 +46,14 @@
       cloud-config:
         Global:
           auth-url: ((auth_url))
+          tenant-name: ((openstack_projectname))
           domain-name: ((openstack_domain))
           password: ((openstack_password))
           region: ((region))
           tenant-id: ((openstack_project_id))
           username: ((openstack_username))
+        BlockStorage:
+          ignore-volume-az: true
     provides:
       cloud-provider: {as: worker-cloud-provider}
 
