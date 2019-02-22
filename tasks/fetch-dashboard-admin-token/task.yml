@@ -1,0 +1,20 @@
+---
+platform: linux
+
+image_resource:
+  type: docker-image
+  source:
+    repository: starkandwayne/concourse
+    tag: 'latest'
+           
+inputs:
+- name: cfcr-git
+
+params:
+  DIRECTOR_NAME:
+  CFCR_MASTER_DNS:
+  KUBO_CA:
+  KUBO_ADMIN_PASSWORD:
+
+run:
+  path: cfcr-git/tasks/fetch-dashboard-admin-token/task.sh
