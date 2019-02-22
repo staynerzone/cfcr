@@ -1,9 +1,23 @@
 resources:
+- name: cfcr-k8s
+  type: kubernetes
+  source:
+    server: https://cfcr-master.bootstrap.cloud.with.hate.pewpew.io:8443
+    namespace: kube-system
+    token: ((token))
+    certificate_authority: ((tls-kubernetes.certificate))
+
 - name: bosh-dns
   type: bosh-io-release
   source:
     repository: cloudfoundry/bosh-dns-release
     regexp: 1.10.*
+
+- name: haproxy
+  type: bosh-io-release
+  source:
+    repository: cloudfoundry-community/haproxy-boshrelease
+    regexp: 9.4.2
 
 - name: bosh-runtime-config
   type: bosh-config
@@ -27,10 +41,22 @@ resources:
     uri: git@github.com:staynerzone/cfcr.git
     private_key: ((git.private_key))
 
-- name: cfcr-poc
+- name: haproxy-git
+  type: git
+  source:
+    branch: master
+    uri: https://github.com/cloudfoundry-incubator/haproxy-boshrelease.git
+
+- name: cfcr
   type: bosh-deployment
   source:
     deployment: cfcr
+    <<: *bucc
+
+- name: haproxy-ingress
+  type: bosh-deployment
+  source:
+    deployment: haproxy
     <<: *bucc
 
 - name: bosh-errand-cfcr
@@ -40,6 +66,12 @@ resources:
     <<: *bucc
 
 resource_types:
+- name: kubernetes
+  type: docker-image
+  source:
+    repository: zlabjp/kubernetes-resource
+    tag: "1.13"
+
 - name: bosh-errand
   type: docker-image
   source:
@@ -59,7 +91,7 @@ jobs:
 - name: teardown
   plan:
   - get: cfcr-git
-  - put: cfcr-poc
+  - put: cfcr
     params:
       manifest: cfcr-git/manifests/cfcr.yml
       delete:
@@ -75,7 +107,7 @@ jobs:
   - put: bosh-runtime-config
     params:
       manifest: cfcr-git/configs/runtime-config-dns.yml
-  - put: cfcr-poc
+  - put: cfcr
     params:
       manifest: cfcr-git/manifests/cfcr.yml
       stemcells:
@@ -86,10 +118,85 @@ jobs:
       - cfcr-git/manifests/ops-files/misc/single-master.yml
       - cfcr-git/manifests/ops-files/add-hostname-to-master-certificate.yml
       - cfcr-git/manifests/ops-files/add-bosh-dns.yml
+      - cfcr-git/manifests/ops-files/iaas/openstack/cloud-provider.yml
+#      - cfcr-git/manifests/ops-files/enable-podsecuritypolicy.yml
+      - cfcr-git/manifests/ops-files/enable-bbr.yml
+#      - cfcr-git/manifests/ops-files/enable-securitycontextdeny.yml
+      - cfcr-git/manifests/ops-files/enable-nfs.yml
       vars:
         api-hostname: cfcr-master.bootstrap.cloud.with.hate.pewpew.io     
       cleanup: true
       recreate: false
+
+- name: deploy-ingress-haproxy
+  plan:
+  - aggregate:
+    - get: haproxy-git
+    - get: haproxy
+  - put: haproxy-ingress
+    params:
+      manifest: haproxy-git/manifests/haproxy.yml
+      releases:
+      - haproxy/*.tgz
+      vars:
+        haproxy-backend-port: 31534
+        haproxy-backend-servers: [192.168.0.22,192.168.0.23,192.168.0.24]
+        disable_http: true
+        ssl_enabled: true
+      cleanup: true
+      recreate: false
+
+- name: fetch-token
+  plan:
+  - get: cfcr-git
+    passed: [deploy-cfcr]
+  - task: fetch-token
+    file: cfcr-git/tasks/fetch-token/task.yml
+    params:
+      DIRECTOR_NAME: ((bosh_name))
+      CFCR_MASTER_DNS: ((cfcr-master-dns))
+      KUBO_ADMIN_PASSWORD: ((kubo-admin-password))
+      KUBO_CA: ((tls-kubernetes.ca))
+      CREDHUB_URL: ((credhub_url))
+      CREDHUB_CLIENT: ((credhub_username))
+      CREDHUB_SECRET: ((credhub_password))
+      CREDHUB_CA: ((credhub_ca_cert))
+
+- name: kubectl-apply-config
+  plan:
+  - get: cfcr-git
+    passed: [fetch-token]
+  - put: cfcr-k8s
+    params:
+      kubectl: apply -f cfcr-git/imports/ingress/00-ingress-controller-baremetal.yml
+  - put: cfcr-k8s
+    params:
+      kubectl: apply -f cfcr-git/imports/ingress/01-ingress-service.yml
+  - put: cfcr-k8s
+    params:
+      kubectl: apply -f cfcr-git/imports/ingress/99-apple-echo-ing.yml
+  - put: cfcr-k8s
+    params:
+      kubectl: apply -f cfcr-git/imports/ingress/99-banana-echo-ing.yml
+  - put: cfcr-k8s
+    params:
+      kubectl: apply -f cfcr-git/imports/pods/99-apple-echo-pod.yml
+  - put: cfcr-k8s
+    params:
+      kubectl: apply -f cfcr-git/imports/pods/99-banana-echo-pod.yml
+  - put: cfcr-k8s
+    params:
+      kubectl: apply -f cfcr-git/imports/user/00-create-admin-service-account.yml
+  - put: cfcr-k8s
+    params:
+      kubectl: apply -f cfcr-git/imports/user/01-create-clusterRoleBinding-admin-service-account.yml
+  - put: cfcr-k8s
+    params:
+      kubectl: apply -f cfcr-git/imports/user/10-create-view-service-account.yml
+  - put: cfcr-k8s
+    params:
+      kubectl: apply -f cfcr-git/imports/user/11-create-clusterRoleBinding-view-service-account.yml
+
 
 - name: apply-specs-errand
   plan:
@@ -102,7 +209,7 @@ jobs:
 - name: smoke-tests-errand
   plan:
   - get: cfcr-git
-    passed: [deploy-cfcr, apply-specs-errand]
+    passed: [apply-specs-errand]
   - put: bosh-errand-cfcr
     params:
       name: smoke-tests
