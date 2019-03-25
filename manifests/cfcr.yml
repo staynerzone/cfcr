@@ -403,25 +403,25 @@ instance_groups:
 name: cfcr
 releases:
 - name: kubo
-  sha1: 38c02329a63963e4d726dcae7d1192a1dcda724b
-  url: https://storage.googleapis.com/kubo-precompiled-releases/kubo-0.29.0-ubuntu-xenial-250.4-20190214-201044-577730286.tgz
-  version: 0.29.0
+  sha1: 918199091151805fe616cf111cc4ae29049b548f
+  url: https://storage.googleapis.com/kubo-precompiled-releases/kubo-0.30.0-ubuntu-xenial-250.9-20190304-203446-445111691.tgz
+  version: 0.30.0
 - name: cfcr-etcd
-  sha1: 22a77571abe2f0cfeec53d32a05823c92d99a76d
-  url: https://storage.googleapis.com/kubo-precompiled-releases/cfcr-etcd-1.9.0-ubuntu-xenial-250.4-20190211-162547-544333006.tgz
+  sha1: deaf11d343ecd732848255355874222d24f41bd2
+  url: https://storage.googleapis.com/kubo-precompiled-releases/cfcr-etcd-1.9.0-ubuntu-xenial-250.9-20190213-194350-103049471.tgz
   version: 1.9.0
 - name: docker
-  sha1: 3b7f126342331857d39e1dcb84a040a405420685
-  url: https://storage.googleapis.com/kubo-precompiled-releases/docker-34.0.0-ubuntu-xenial-250.4-20190211-222831-632308589.tgz
-  version: 34.0.0
+  sha1: 06678d9672cbd5e2243d10bbd27ac86b4f7627a9
+  url: https://storage.googleapis.com/kubo-precompiled-releases/docker-35.0.0-ubuntu-xenial-250.9-20190220-215157-61207336.tgz
+  version: 35.0.0
 - name: bpm
-  sha1: f22a0b4f4b3df5ed502cf6198e25fa66280737f3
-  url: https://storage.googleapis.com/kubo-precompiled-releases/bpm-1.0.3-ubuntu-xenial-250.4-20190212-175901-407138844.tgz
+  sha1: d4480335f743623f6930ff901056b90de073e76d
+  url: https://storage.googleapis.com/kubo-precompiled-releases/bpm-1.0.3-ubuntu-xenial-250.9-20190213-195020-853877828.tgz
   version: 1.0.3
 stemcells:
 - alias: default
   os: ubuntu-xenial
-  version: latest
+  version: 250.9
 update:
   canaries: 1
   canary_watch_time: 10000-300000

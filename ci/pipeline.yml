@@ -1,3 +1,30 @@
+groups:
+- name: kubernetes
+  jobs:
+  - deploy-cfcr
+  - teardown
+- name: errands
+  jobs:
+  - apply-specs-errand
+  - smoke-tests-errand
+- name: k8s-addons
+  jobs:
+  - fetch-token
+  - kubectl-apply-config
+- name: kubernetes-dashboard
+  jobs:
+  - access
+  - deploy-ingress-haproxy
+- name: landscape
+  jobs:
+  - teardown
+  - deploy-cfcr
+  - access
+  - apply-specs-errand
+  - smoke-tests-errand
+  - fetch-token
+  - kubectl-apply-config
+  - deploy-ingress-haproxy
 resources:
 - name: cfcr-k8s
   type: kubernetes
@@ -45,7 +72,8 @@ resources:
   type: git
   source:
     branch: master
-    uri: https://github.com/cloudfoundry-incubator/haproxy-boshrelease.git
+    uri: git@github.com:staynerzone/haproxy-boshrelease.git
+    private_key: ((git.private_key))
 
 - name: cfcr
   type: bosh-deployment
@@ -132,24 +160,29 @@ jobs:
   plan:
   - aggregate:
     - get: haproxy-git
+    - get: cfcr-git 
+      passed: [kubectl-apply-config]
     - get: haproxy
   - put: haproxy-ingress
     params:
       manifest: haproxy-git/manifests/haproxy.yml
       releases:
       - haproxy/*.tgz
+      ops_files:
+      - haproxy-git/manifests/ops-files/routed_backend_servers.yml
       vars:
-        haproxy-backend-port: 31534
-        haproxy-backend-servers: [192.168.0.22,192.168.0.23,192.168.0.24]
-        disable_http: true
-        ssl_enabled: true
+        haproxy_vip: 10.43.125.38
+        haproxy_disable_http: true
+        haproxy_frontend_port: 443
+        haproxy_backend_port: 31518
+        haproxy_backend_servers: [192.168.0.22,192.168.0.23,192.168.0.24]
       cleanup: true
       recreate: false
 
 - name: fetch-token
   plan:
   - get: cfcr-git
-    passed: [deploy-cfcr]
+    passed: [smoke-tests-errand]
   - task: fetch-token
     file: cfcr-git/tasks/fetch-token/task.yml
     params:
@@ -161,6 +194,18 @@ jobs:
       CREDHUB_CLIENT: ((credhub_username))
       CREDHUB_SECRET: ((credhub_password))
       CREDHUB_CA: ((credhub_ca_cert))
+
+- name: access
+  plan:
+  - get: cfcr-git
+  - task: fetch-token
+    file: cfcr-git/tasks/fetch-dashboard-admin-token/task.yml
+    params:
+      DIRECTOR_NAME: ((bosh_name))
+      CFCR_MASTER_DNS: ((cfcr-master-dns))
+      KUBO_ADMIN_PASSWORD: ((kubo-admin-password))
+      KUBO_CA: ((tls-kubernetes.ca))
+
 
 - name: kubectl-apply-config
   plan:
